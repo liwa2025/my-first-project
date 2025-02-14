@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>抖音9:16三维空间</title>
+    <style>
+        :root {
+            --vh: 1vh;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #0a0410;
+            width: 100vw;
+            height: calc(var(--vh, 1vh) * 100);
+            perspective: 1200px;
+            font-family: 'Microsoft Yahei', cursive;
+        }
+
+        .scene {
+            position: relative;
+            width: 100vw;
+            height: calc(var(--vh, 1vh) * 100);
+            transform-style: preserve-3d;
+            animation: scroll 30s linear infinite;
+        }
+
+        .text-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+        }
+
+        .text-block {
+            position: absolute;
+            color: #ffe6f0;
+            text-shadow: 
+                0 0 4vw #ff69b4,
+                0 0 6vw rgba(255,20,147,0.8);
+            opacity: 0;
+            animation: 
+                fadeInOut 8s ease-in-out infinite,
+                float3D 15s ease-in-out infinite;
+            transform-origin: center;
+            white-space: nowrap;
+            font-size: 3.5vw; /* 统一字号 */
+        }
+
+        @keyframes scroll {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-100%); }
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; filter: blur(2vw); }
+            20%, 80% { opacity: 1; filter: blur(0); }
+        }
+
+        @keyframes float3D {
+            0% { transform: rotateY(-5deg) rotateX(2deg); }
+            50% { transform: rotateY(5deg) rotateX(-2deg); }
+            100% { transform: rotateY(-5deg) rotateX(2deg); }
+        }
+
+        .heart {
+            position: absolute;
+            animation: 
+                heartbeat 2s ease-in-out infinite,
+                cosmicFlow 20s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes cosmicFlow {
+            0% { transform: translate3d(-30%,-30%,0) scale(0.8); }
+            100% { transform: translate3d(130%,130%,1200px) scale(1.2); }
+        }
+
+        .heart::before {
+            content: '❤';
+            color: #ff3366;
+            text-shadow: 0 0 5vw #ff0066;
+            font-size: 6vw;
+        }
+
+        #layer2 {
+            transform: translateY(100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="scene" id="scene">
+        <div class="text-layer" id="layer1"></div>
+        <div class="text-layer" id="layer2"></div>
+    </div>
+
+    <script>
+        // 动态视口高度（修正单位）
+        function setViewportHeight() {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        window.addEventListener('resize', setViewportHeight);
+        setViewportHeight();
+
+        // 智能布局系统（优化碰撞检测）
+        class LayoutSystem {
+            constructor(cols=4, rows=12) {
+                this.grid = Array(cols).fill().map(() => Array(rows).fill(false));
+                this.colWidth = 100 / cols;
+                this.rowHeight = 100 / rows;
+            }
+
+            getAvailablePosition() {
+                let attempts = 0;
+                let col, row;
+                do {
+                    col = Math.floor(Math.random() * this.grid.length);
+                    row = Math.floor(Math.random() * this.grid[0].length);
+                    attempts++;
+                    if(attempts > 100) break; // 防止死循环
+                } while(this.grid[col][row]);
+                
+                this.grid[col][row] = true;
+                return {
+                    x: col * this.colWidth + this.colWidth/2,
+                    y: row * this.rowHeight + this.rowHeight/2
+                };
+            }
+        }
+
+        // 创建文字元素（增加防抖处理）
+        let resizeTimer;
+        function createTextElements(container) {
+            const layers = [
+                { z: 200, scale: 1.4, alpha: 1 },
+                { z: 0, scale: 1.1, alpha: 0.9 },
+                { z: -200, scale: 0.8, alpha: 0.7 }
+            ];
+
+            layers.forEach(layer => {
+                const layout = new LayoutSystem();
+                for(let i=0; i<15; i++) {
+                    const pos = layout.getAvailablePosition();
+                    const text = document.createElement('div');
+                    text.className = 'text-block';
+                    text.textContent = messages[i % messages.length];
+                    
+                    Object.assign(text.style, {
+                        left: `${pos.x}%`,
+                        top: `${pos.y}%`,
+                        transform: `
+                            translate3d(-50%, -50%, ${layer.z}px)
+                            scale(${layer.scale})
+                            rotateY(${(pos.x-50)*0.3}deg)`,
+                        opacity: layer.alpha,
+                        animationDelay: `${i*0.3}s`,
+                    });
+                    
+                    container.appendChild(text);
+                }
+            });
+        }
+
+        // 创建爱心元素（限制数量）
+        function createHearts() {
+            const container = document.getElementById('scene');
+            for(let i=0; i<10; i++){ // 减少到10个爱心
+                const heart = document.createElement('div');
+                heart.className = 'heart';
+                heart.style.cssText = `
+                    left: ${Math.random()*100}%;
+                    top: ${Math.random()*100}%;
+                    animation-delay: ${Math.random()*5}s;
+                `;
+                container.appendChild(heart);
+            }
+        }
+
+        // 初始化
+        const messages = [
+            "星河入梦", "月色温柔", 
+            "朝暮予你", "浮世三千",
+            "人间值得", "因为有你",
+            "吾妻茹君", "情人节快乐"
+        ];
+
+        // 防抖重置（修正内存泄漏）
+        window.onload = init;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                document.querySelectorAll('.text-block').forEach(el => el.remove());
+                document.querySelectorAll('.heart').forEach(el => el.remove());
+                init();
+            }, 200);
+        });
+
+        function init() {
+            createTextElements(document.getElementById('layer1'));
+            createTextElements(document.getElementById('layer2'));
+            createHearts();
+        }
+    </script>
+</body>
+</html>
